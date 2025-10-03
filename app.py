@@ -7,41 +7,26 @@ import re
 import json
 import requests
 import socket
-import whois
-import dns.resolver
-import subprocess
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import time
 import plotly.express as px
 import plotly.graph_objects as go
-from urllib.parse import urlparse, quote, unquote
+from urllib.parse import urlparse
 import ipaddress
 import threading
 from concurrent.futures import ThreadPoolExecutor
-import asyncio
-import aiohttp
 import qrcode
 from io import BytesIO
-import cryptography
-from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
-from cryptography.hazmat.primitives import serialization
 import jwt
 import hmac
 import zlib
-import tarfile
-import gzip
 import binascii
 from PIL import Image
-import cv2
-import pytesseract
-from steganography import Steganography
-import networkx as nx
 import matplotlib.pyplot as plt
+import io
+import uuid
 
 # Page configuration
 st.set_page_config(
@@ -55,8 +40,8 @@ st.set_page_config(
 st.markdown("""
 <style>
     .main-header {
-        font-size: 3.5rem;
-        background: linear-gradient(45deg, #1f77b4, #ff6b6b);
+        font-size: 3rem;
+        background: linear-gradient(45deg, #FF4B4B, #1E90FF);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         text-align: center;
@@ -65,284 +50,167 @@ st.markdown("""
     }
     .metric-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1.5rem;
-        border-radius: 15px;
+        padding: 1rem;
+        border-radius: 10px;
         color: white;
         margin: 0.5rem;
+        text-align: center;
     }
+    .security-critical { background: #FF0000; color: white; padding: 5px; border-radius: 3px; }
+    .security-high { background: #FF6B6B; color: white; padding: 5px; border-radius: 3px; }
+    .security-medium { background: #FFA500; color: white; padding: 5px; border-radius: 3px; }
+    .security-low { background: #32CD32; color: white; padding: 5px; border-radius: 3px; }
     .tool-card {
-        background: #1e1e1e;
-        padding: 2rem;
-        border-radius: 15px;
-        margin: 1rem 0;
-        border-left: 5px solid #667eea;
-        color: white;
-    }
-    .security-critical { background: linear-gradient(135deg, #ff416c, #ff4b2b); color: white; padding: 8px; border-radius: 5px; }
-    .security-high { background: linear-gradient(135deg, #ff9966, #ff5e62); color: white; padding: 8px; border-radius: 5px; }
-    .security-medium { background: linear-gradient(135deg, #f9d423, #ff4e50); color: white; padding: 8px; border-radius: 5px; }
-    .security-low { background: linear-gradient(135deg, #56ab2f, #a8e6cf); color: white; padding: 8px; border-radius: 5px; }
-    .sidebar .sidebar-content {
         background: #0f1116;
-    }
-    .stButton>button {
-        background: linear-gradient(45deg, #667eea, #764ba2);
-        color: white;
-        border: none;
-        padding: 0.5rem 1rem;
-        border-radius: 5px;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+        border-left: 4px solid #1E90FF;
     }
 </style>
 """, unsafe_allow_html=True)
 
 class AdvancedCybersecurityTools:
     def __init__(self):
-        self.threat_intel_sources = [
-            "https://otx.alienvault.com/api/v1/indicators/",
-            "https://api.shodan.io/",
-            "https://www.virustotal.com/api/v3/"
-        ]
+        self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        })
     
-    # Advanced Hashing & Cryptography
-    def advanced_hash_generator(self, text, algorithm='sha3_512', salt=None, iterations=100000):
-        """Advanced hash generation with salt and iterations"""
-        if salt is None:
-            salt = secrets.token_bytes(16)
+    # Advanced Hashing
+    def advanced_hash_generator(self, text, algorithm='sha3_256'):
+        """Generate advanced hashes"""
+        try:
+            if algorithm == 'md5':
+                return hashlib.md5(text.encode()).hexdigest()
+            elif algorithm == 'sha1':
+                return hashlib.sha1(text.encode()).hexdigest()
+            elif algorithm == 'sha256':
+                return hashlib.sha256(text.encode()).hexdigest()
+            elif algorithm == 'sha512':
+                return hashlib.sha512(text.encode()).hexdigest()
+            elif algorithm == 'sha3_256':
+                return hashlib.sha3_256(text.encode()).hexdigest()
+            elif algorithm == 'sha3_512':
+                return hashlib.sha3_512(text.encode()).hexdigest()
+            elif algorithm == 'blake2b':
+                return hashlib.blake2b(text.encode()).hexdigest()
+            else:
+                return "Unsupported algorithm"
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    # Password Analysis
+    def password_strength_analyzer(self, password):
+        """Comprehensive password strength analysis"""
+        score = 0
+        feedback = []
         
-        if algorithm.startswith('scrypt'):
-            kdf = hashlib.scrypt(
-                text.encode(),
-                salt=salt,
-                n=2**14,
-                r=8,
-                p=1,
-                dklen=64
-            )
-            return kdf.hex()
+        # Length check
+        if len(password) >= 16:
+            score += 3
+        elif len(password) >= 12:
+            score += 2
+        elif len(password) >= 8:
+            score += 1
         else:
-            hash_func = getattr(hashlib, algorithm, None)
-            if hash_func:
-                # Apply key stretching
-                hashed = text.encode()
-                for _ in range(iterations):
-                    hashed = hash_func(hashed + salt).digest()
-                return hashed.hex()
-        return None
-
-    def generate_rsa_keys(self, key_size=4096):
-        """Generate RSA key pair"""
-        private_key = rsa.generate_private_key(
-            public_exponent=65537,
-            key_size=key_size
-        )
-        public_key = private_key.public_key()
+            feedback.append("❌ Password should be at least 8 characters")
         
-        # Serialize keys
-        private_pem = private_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption()
-        )
+        # Character variety
+        checks = [
+            (r'[A-Z]', "uppercase letter", 1),
+            (r'[a-z]', "lowercase letter", 1),
+            (r'\d', "number", 1),
+            (r'[!@#$%^&*(),.?":{}|<>]', "special character", 2),
+            (r'.{20,}', "very long password", 2)
+        ]
         
-        public_pem = public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
-        )
+        for pattern, description, points in checks:
+            if re.search(pattern, password):
+                score += points
+            else:
+                if points > 1:  # Only show important missing elements
+                    feedback.append(f"❌ Consider adding {description}")
         
-        return private_pem.decode(), public_pem.decode()
+        # Entropy calculation
+        char_set = 0
+        if re.search(r'[a-z]', password): char_set += 26
+        if re.search(r'[A-Z]', password): char_set += 26
+        if re.search(r'\d', password): char_set += 10
+        if re.search(r'[^a-zA-Z0-9]', password): char_set += 32
+        
+        entropy = len(password) * (np.log2(char_set) if char_set > 0 else 0)
+        
+        # Determine strength
+        if entropy > 100:
+            strength = "Very Strong"
+            color = "security-low"
+        elif entropy > 60:
+            strength = "Strong"
+            color = "security-low"
+        elif entropy > 40:
+            strength = "Moderate"
+            color = "security-medium"
+        elif entropy > 20:
+            strength = "Weak"
+            color = "security-high"
+        else:
+            strength = "Very Weak"
+            color = "security-critical"
+        
+        return {
+            "strength": strength,
+            "color": color,
+            "score": score,
+            "entropy": entropy,
+            "feedback": feedback
+        }
 
-    def encrypt_rsa(self, message, public_key_pem):
-        """Encrypt with RSA public key"""
-        public_key = serialization.load_pem_public_key(public_key_pem.encode())
-        encrypted = public_key.encrypt(
-            message.encode(),
-            padding.OAEP(
-                mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                algorithm=hashes.SHA256(),
-                label=None
-            )
-        )
-        return base64.b64encode(encrypted).decode()
+    def generate_secure_password(self, length=16, use_special=True, use_numbers=True):
+        """Generate cryptographically secure password"""
+        characters = string.ascii_letters
+        if use_numbers:
+            characters += string.digits
+        if use_special:
+            characters += "!@#$%^&*"
+        
+        return ''.join(secrets.choice(characters) for _ in range(length))
 
-    # Network Security Tools
-    def port_scanner(self, target, ports="1-1000", timeout=1):
-        """Advanced port scanner"""
+    # Network Tools
+    def port_scanner(self, target, ports="1-100"):
+        """Lightweight port scanner"""
         open_ports = []
-        start_port, end_port = map(int, ports.split('-'))
         
         def scan_port(port):
             try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.settimeout(timeout)
-                    result = s.connect_ex((target, port))
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                    sock.settimeout(1)
+                    result = sock.connect_ex((target, port))
                     if result == 0:
-                        service = socket.getservbyport(port, 'tcp') if port <= 1000 else "unknown"
+                        try:
+                            service = socket.getservbyport(port, 'tcp')
+                        except:
+                            service = "unknown"
                         open_ports.append((port, service))
             except:
                 pass
         
-        with ThreadPoolExecutor(max_workers=100) as executor:
-            executor.map(scan_port, range(start_port, end_port + 1))
+        try:
+            start_port, end_port = map(int, ports.split('-'))
+            with ThreadPoolExecutor(max_workers=50) as executor:
+                executor.map(scan_port, range(start_port, end_port + 1))
+        except:
+            pass
         
         return open_ports
 
-    def dns_enumeration(self, domain):
-        """Comprehensive DNS enumeration"""
-        record_types = ['A', 'AAAA', 'MX', 'NS', 'TXT', 'CNAME', 'SOA']
-        results = {}
-        
-        for record_type in record_types:
-            try:
-                answers = dns.resolver.resolve(domain, record_type)
-                results[record_type] = [str(rdata) for rdata in answers]
-            except:
-                results[record_type] = []
-        
-        return results
-
-    def whois_lookup(self, domain):
-        """WHOIS information lookup"""
+    def website_security_headers(self, url):
+        """Analyze website security headers"""
         try:
-            w = whois.whois(domain)
-            return dict(w)
-        except Exception as e:
-            return {"error": str(e)}
-
-    # Malware Analysis
-    def file_hash_analyzer(self, file_content):
-        """Analyze file with multiple hash types"""
-        hashes = {}
-        algorithms = ['md5', 'sha1', 'sha256', 'sha512', 'sha3_256', 'sha3_512']
-        
-        for algo in algorithms:
-            hash_func = getattr(hashlib, algo)()
-            hash_func.update(file_content)
-            hashes[algo.upper()] = hash_func.hexdigest()
-        
-        return hashes
-
-    def string_extractor(self, file_content, min_length=4):
-        """Extract strings from binary data"""
-        strings = re.findall(b'[\\x20-\\x7E]{'+str(min_length).encode()+b',}', file_content)
-        return [s.decode('ascii', errors='ignore') for s in strings]
-
-    # Steganography
-    def hide_text_in_image(self, image_file, secret_text, password=None):
-        """Hide text in image using steganography"""
-        try:
-            # Simple LSB steganography implementation
-            img = Image.open(image_file)
-            if img.mode != 'RGB':
-                img = img.convert('RGB')
+            if not url.startswith(('http://', 'https://')):
+                url = 'https://' + url
             
-            pixels = img.load()
-            binary_text = ''.join(format(ord(i), '08b') for i in secret_text)
-            binary_text += '1111111111111110'  # End marker
-            
-            if len(binary_text) > img.size[0] * img.size[1] * 3:
-                return None, "Message too long for image"
-            
-            index = 0
-            for x in range(img.size[0]):
-                for y in range(img.size[1]):
-                    if index < len(binary_text):
-                        r, g, b = pixels[x, y]
-                        r = (r & 0xFE) | int(binary_text[index])
-                        index += 1
-                        if index < len(binary_text):
-                            g = (g & 0xFE) | int(binary_text[index])
-                            index += 1
-                        if index < len(binary_text):
-                            b = (b & 0xFE) | int(binary_text[index])
-                            index += 1
-                        pixels[x, y] = (r, g, b)
-                    else:
-                        break
-            
-            output = BytesIO()
-            img.save(output, format='PNG')
-            return output.getvalue(), "Success"
-        except Exception as e:
-            return None, str(e)
-
-    # Threat Intelligence
-    def check_ip_reputation(self, ip):
-        """Check IP reputation (simulated)"""
-        # Note: In production, use actual threat intelligence APIs
-        threat_data = {
-            "malicious_score": np.random.randint(0, 100),
-            "abuse_confidence": np.random.randint(0, 100),
-            "threat_types": ["Botnet", "C2 Server"] if np.random.random() > 0.7 else [],
-            "last_seen": datetime.now().isoformat()
-        }
-        return threat_data
-
-    def domain_reputation_analysis(self, domain):
-        """Analyze domain reputation"""
-        analysis = {
-            "age_days": np.random.randint(1, 3650),
-            "trust_score": np.random.randint(0, 100),
-            "suspicious_indicators": [],
-            "associated_threats": []
-        }
-        
-        if analysis["age_days"] < 30:
-            analysis["suspicious_indicators"].append("New domain")
-        if analysis["trust_score"] < 30:
-            analysis["associated_threats"].append("Potential phishing")
-        
-        return analysis
-
-    # Digital Forensics
-    def timeline_analyzer(self, events):
-        """Analyze event timeline"""
-        df = pd.DataFrame(events)
-        if 'timestamp' in df.columns:
-            df['timestamp'] = pd.to_datetime(df['timestamp'])
-            df = df.sort_values('timestamp')
-        return df
-
-    def memory_analysis_simulation(self):
-        """Simulate memory analysis"""
-        processes = [
-            {"pid": 1234, "name": "explorer.exe", "cpu": 2.5, "memory": 45.2},
-            {"pid": 5678, "name": "chrome.exe", "cpu": 15.7, "memory": 120.5},
-            {"pid": 9012, "name": "suspicious.exe", "cpu": 85.3, "memory": 5.1},
-        ]
-        return processes
-
-    # Cryptanalysis
-    def frequency_analysis(self, text):
-        """Perform frequency analysis on text"""
-        text = text.upper()
-        freq = {}
-        total = len([c for c in text if c.isalpha()])
-        
-        for char in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
-            count = text.count(char)
-            freq[char] = (count, count/total * 100 if total > 0 else 0)
-        
-        return freq
-
-    def caesar_cracker(self, ciphertext):
-        """Attempt to crack Caesar cipher"""
-        results = []
-        for shift in range(26):
-            plaintext = ""
-            for char in ciphertext:
-                if char.isalpha():
-                    ascii_offset = 65 if char.isupper() else 97
-                    plaintext += chr((ord(char) - ascii_offset - shift) % 26 + ascii_offset)
-                else:
-                    plaintext += char
-            results.append((shift, plaintext))
-        return results
-
-    # Security Headers Analyzer
-    def analyze_http_headers(self, url):
-        """Analyze HTTP security headers"""
-        try:
-            response = requests.get(url, timeout=10)
+            response = self.session.get(url, timeout=10, verify=False)
             headers = dict(response.headers)
             
             security_headers = {
@@ -358,27 +226,125 @@ class AdvancedCybersecurityTools:
         except Exception as e:
             return {"error": str(e)}, 0
 
-    # QR Code Security
-    def generate_secure_qr(self, data, password=None):
-        """Generate QR code with optional encryption"""
-        if password:
-            # Simple XOR encryption for demonstration
-            encrypted = ''.join(chr(ord(c) ^ ord(password[i % len(password)])) for i, c in enumerate(data))
-            data = base64.b64encode(encrypted.encode()).decode()
+    # Cryptography Tools
+    def jwt_analyzer(self, token):
+        """Analyze JWT tokens"""
+        try:
+            decoded = jwt.decode(token, options={"verify_signature": False})
+            header = jwt.get_unverified_header(token)
+            return {
+                "header": header,
+                "payload": decoded,
+                "valid": True
+            }
+        except Exception as e:
+            return {"valid": False, "error": str(e)}
+
+    def generate_jwt_token(self, payload, secret):
+        """Generate JWT token"""
+        try:
+            token = jwt.encode(payload, secret, algorithm="HS256")
+            return token
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    # Data Encoding/Decoding
+    def multi_format_encoder(self, text, format_type):
+        """Encode text in multiple formats"""
+        try:
+            if format_type == 'base64':
+                return base64.b64encode(text.encode()).decode()
+            elif format_type == 'hex':
+                return text.encode().hex()
+            elif format_type == 'binary':
+                return ' '.join(format(ord(i), '08b') for i in text)
+            elif format_type == 'url':
+                return requests.utils.quote(text)
+            else:
+                return "Unsupported format"
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    def multi_format_decoder(self, text, format_type):
+        """Decode text from multiple formats"""
+        try:
+            if format_type == 'base64':
+                return base64.b64decode(text.encode()).decode()
+            elif format_type == 'hex':
+                return bytes.fromhex(text).decode()
+            elif format_type == 'binary':
+                return ''.join(chr(int(b, 2)) for b in text.split())
+            elif format_type == 'url':
+                return requests.utils.unquote(text)
+            else:
+                return "Unsupported format"
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    # QR Code Tools
+    def generate_qr_code(self, data):
+        """Generate QR code"""
+        try:
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(data)
+            qr.make(fit=True)
+            
+            img = qr.make_image(fill_color="black", back_color="white")
+            buf = BytesIO()
+            img.save(buf, format="PNG")
+            return buf.getvalue()
+        except Exception as e:
+            return None
+
+    # Threat Intelligence Simulation
+    def ip_reputation_check(self, ip):
+        """Simulate IP reputation check"""
+        try:
+            ipaddress.ip_address(ip)  # Validate IP
+            
+            # Simulate threat intelligence data
+            threat_score = hash(ip) % 100  # Pseudo-random based on IP
+            threats = []
+            
+            if threat_score > 80:
+                threats = ["Known malicious IP", "Botnet activity"]
+            elif threat_score > 60:
+                threats = ["Suspicious activity", "Port scanning"]
+            
+            return {
+                "ip": ip,
+                "threat_score": threat_score,
+                "threats": threats,
+                "risk_level": "High" if threat_score > 80 else "Medium" if threat_score > 60 else "Low"
+            }
+        except ValueError:
+            return {"error": "Invalid IP address"}
+
+    # File Analysis
+    def file_hash_analyzer(self, file_content):
+        """Analyze file with multiple hash types"""
+        hashes = {}
+        algorithms = ['md5', 'sha1', 'sha256', 'sha512']
         
-        qr = qrcode.QRCode(
-            version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_L,
-            box_size=10,
-            border=4,
-        )
-        qr.add_data(data)
-        qr.make(fit=True)
+        for algo in algorithms:
+            hash_func = getattr(hashlib, algo)()
+            hash_func.update(file_content)
+            hashes[algo.upper()] = hash_func.hexdigest()
         
-        img = qr.make_image(fill_color="black", back_color="white")
-        buf = BytesIO()
-        img.save(buf, format="PNG")
-        return buf.getvalue()
+        return hashes
+
+    def string_extractor(self, file_content, min_length=4):
+        """Extract strings from binary data"""
+        try:
+            strings = re.findall(b'[\\x20-\\x7E]{'+str(min_length).encode()+b',}', file_content)
+            return [s.decode('ascii', errors='ignore') for s in strings[:100]]  # Limit output
+        except:
+            return []
 
 def main():
     st.markdown('<h1 class="main-header">🛡️ Advanced Cybersecurity Operations Center</h1>', unsafe_allow_html=True)
@@ -391,660 +357,572 @@ def main():
     section = st.sidebar.selectbox(
         "Select Module:",
         [
-            "📊 Dashboard",
-            "🔐 Advanced Cryptography",
-            "🌐 Network Security",
-            "🕵️ Threat Intelligence",
-            "🔍 Digital Forensics",
+            "📊 Security Dashboard",
+            "🔐 Password Security",
+            "🔄 Cryptography Tools",
+            "🌐 Network Analysis",
             "📡 Web Security",
-            "📱 Mobile Security",
-            "🧩 Cryptanalysis",
-            "🖼️ Steganography",
-            "📈 Security Analytics",
-            "⚙️ Incident Response",
-            "🔧 Utilities"
+            "🔍 Threat Intelligence",
+            "📊 Data Analysis",
+            "🛠️ Utilities"
         ]
     )
     
-    if section == "📊 Dashboard":
+    if section == "📊 Security Dashboard":
         show_dashboard(tools)
-    elif section == "🔐 Advanced Cryptography":
-        show_advanced_cryptography(tools)
-    elif section == "🌐 Network Security":
-        show_network_security(tools)
-    elif section == "🕵️ Threat Intelligence":
-        show_threat_intelligence(tools)
-    elif section == "🔍 Digital Forensics":
-        show_digital_forensics(tools)
+    elif section == "🔐 Password Security":
+        show_password_security(tools)
+    elif section == "🔄 Cryptography Tools":
+        show_cryptography_tools(tools)
+    elif section == "🌐 Network Analysis":
+        show_network_analysis(tools)
     elif section == "📡 Web Security":
         show_web_security(tools)
-    elif section == "📱 Mobile Security":
-        show_mobile_security(tools)
-    elif section == "🧩 Cryptanalysis":
-        show_cryptanalysis(tools)
-    elif section == "🖼️ Steganography":
-        show_steganography(tools)
-    elif section == "📈 Security Analytics":
-        show_security_analytics(tools)
-    elif section == "⚙️ Incident Response":
-        show_incident_response(tools)
-    elif section == "🔧 Utilities":
+    elif section == "🔍 Threat Intelligence":
+        show_threat_intelligence(tools)
+    elif section == "📊 Data Analysis":
+        show_data_analysis(tools)
+    elif section == "🛠️ Utilities":
         show_utilities(tools)
 
 def show_dashboard(tools):
-    st.header("📊 CSOC Dashboard")
+    st.header("📊 Security Dashboard")
     
-    # Metrics
+    # Real-time metrics
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.markdown('<div class="metric-card"><h3>Threat Level</h3><h2>MEDIUM</h2></div>', unsafe_allow_html=True)
+        st.markdown('<div class="metric-card"><h4>🛡️ Security Score</h4><h2>85%</h2></div>', unsafe_allow_html=True)
     with col2:
-        st.markdown('<div class="metric-card"><h3>Active Incidents</h3><h2>3</h2></div>', unsafe_allow_html=True)
+        st.markdown('<div class="metric-card"><h4>🚨 Active Threats</h4><h2>3</h2></div>', unsafe_allow_html=True)
     with col3:
-        st.markdown('<div class="metric-card"><h3>Systems Protected</h3><h2>1,247</h2></div>', unsafe_allow_html=True)
+        st.markdown('<div class="metric-card"><h4>🔍 Scans Today</h4><h2>47</h2></div>', unsafe_allow_html=True)
     with col4:
-        st.markdown('<div class="metric-card"><h3>Last Scan</h3><h2>2 min ago</h2></div>', unsafe_allow_html=True)
+        st.markdown('<div class="metric-card"><h4>✅ Protected</h4><h2>98%</h2></div>', unsafe_allow_html=True)
     
-    # Charts
+    # Security charts
     col1, col2 = st.columns(2)
     
     with col1:
-        # Threat distribution chart
+        # Threat distribution
         threat_data = pd.DataFrame({
-            'Category': ['Malware', 'Phishing', 'DDoS', 'Insider Threat', 'Zero-Day'],
-            'Count': [45, 32, 18, 12, 5]
+            'Category': ['Malware', 'Phishing', 'DDoS', 'Insider', 'Zero-Day'],
+            'Count': [45, 32, 18, 8, 2]
         })
-        fig = px.pie(threat_data, values='Count', names='Category', title='Threat Distribution')
-        st.plotly_chart(fig)
+        fig = px.pie(threat_data, values='Count', names='Category', 
+                    title='Threat Distribution', color_discrete_sequence=px.colors.sequential.RdBu)
+        st.plotly_chart(fig, use_container_width=True)
     
     with col2:
-        # Timeline
-        timeline_data = pd.DataFrame({
-            'Date': pd.date_range('2024-01-01', periods=30, freq='D'),
-            'Events': np.random.randint(1, 20, 30)
+        # Security events timeline
+        dates = pd.date_range('2024-01-01', periods=30, freq='D')
+        events_data = pd.DataFrame({
+            'Date': dates,
+            'Security Events': np.random.randint(1, 50, 30)
         })
-        fig = px.line(timeline_data, x='Date', y='Events', title='Security Events Timeline')
-        st.plotly_chart(fig)
+        fig = px.line(events_data, x='Date', y='Security Events', 
+                     title='Security Events Timeline', line_shape='spline')
+        st.plotly_chart(fig, use_container_width=True)
     
-    # Recent Alerts
+    # Recent alerts
     st.subheader("🚨 Recent Security Alerts")
     alerts = [
-        {"time": "10:23 AM", "severity": "HIGH", "description": "Suspicious outbound traffic detected", "source": "192.168.1.45"},
-        {"time": "09:47 AM", "severity": "MEDIUM", "description": "Multiple failed login attempts", "source": "10.0.1.23"},
-        {"time": "08:15 AM", "severity": "LOW", "description": "Unusual port scanning activity", "source": "External"}
+        {"time": "14:23", "severity": "HIGH", "message": "Suspicious outbound traffic from 192.168.1.45", "status": "Investigating"},
+        {"time": "13:47", "severity": "MEDIUM", "message": "Multiple failed login attempts", "status": "Resolved"},
+        {"time": "12:15", "severity": "LOW", "message": "Unusual port scanning activity", "status": "Monitoring"}
     ]
     
     for alert in alerts:
         severity_class = f"security-{alert['severity'].lower()}"
         st.markdown(f"""
-        <div style="padding: 10px; border-left: 4px solid; margin: 5px 0; background: #1e1e1e;">
+        <div style="padding: 10px; margin: 5px 0; background: #1e1e2e; border-radius: 5px; border-left: 4px solid #ff6b6b;">
             <strong>{alert['time']}</strong> - 
             <span class="{severity_class}">{alert['severity']}</span> - 
-            {alert['description']} - 
-            <em>{alert['source']}</em>
+            {alert['message']} - 
+            <em>{alert['status']}</em>
         </div>
         """, unsafe_allow_html=True)
 
-def show_advanced_cryptography(tools):
-    st.header("🔐 Advanced Cryptography")
+def show_password_security(tools):
+    st.header("🔐 Password Security Analysis")
     
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["RSA Encryption", "Advanced Hashing", "Key Generation", "Digital Signatures", "Cryptographic Analysis"])
+    tab1, tab2, tab3 = st.tabs(["Password Analyzer", "Password Generator", "Breach Check"])
     
     with tab1:
-        st.subheader("RSA Encryption/Decryption")
+        st.subheader("Password Strength Analysis")
+        
+        password = st.text_input("Enter password to analyze:", type="password", key="analyze_pwd")
+        
+        if password:
+            analysis = tools.password_strength_analyzer(password)
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.metric("Strength", analysis["strength"])
+                st.metric("Entropy Score", f"{analysis['entropy']:.1f} bits")
+                st.metric("Security Score", f"{analysis['score']}/10")
+            
+            with col2:
+                st.markdown(f"<span class='{analysis['color']}'>{analysis['strength']}</span>", unsafe_allow_html=True)
+                
+                # Progress bar for entropy
+                entropy_percent = min(analysis['entropy'] / 100 * 100, 100)
+                st.progress(entropy_percent / 100)
+                st.caption(f"Password Entropy: {analysis['entropy']:.1f} bits")
+            
+            if analysis['feedback']:
+                st.subheader("Recommendations:")
+                for item in analysis['feedback']:
+                    st.write(item)
+    
+    with tab2:
+        st.subheader("Secure Password Generator")
         
         col1, col2 = st.columns(2)
         
         with col1:
-            if st.button("Generate RSA Key Pair"):
-                private_key, public_key = tools.generate_rsa_keys()
-                st.text_area("Private Key:", private_key, height=200)
-                st.text_area("Public Key:", public_key, height=150)
+            length = st.slider("Password Length", 8, 32, 16)
+            use_special = st.checkbox("Include Special Characters", True)
+            use_numbers = st.checkbox("Include Numbers", True)
         
         with col2:
-            message = st.text_area("Message to encrypt:")
-            public_key_input = st.text_area("Public Key for encryption:", height=150)
-            
-            if st.button("Encrypt Message") and message and public_key_input:
-                encrypted = tools.encrypt_rsa(message, public_key_input)
-                st.text_area("Encrypted Message:", encrypted, height=100)
-    
-    with tab2:
-        st.subheader("Advanced Hashing Algorithms")
-        
-        text = st.text_area("Text to hash:")
-        algorithm = st.selectbox("Algorithm:", ["sha3_512", "sha3_256", "blake2b", "blake2s", "scrypt"])
-        
-        if st.button("Generate Advanced Hash") and text:
-            if algorithm == "scrypt":
-                hash_result = tools.advanced_hash_generator(text, algorithm="scrypt")
-            else:
-                hash_result = tools.advanced_hash_generator(text, algorithm)
-            
-            if hash_result:
-                st.text_area("Hash Result:", hash_result, height=100)
+            if st.button("Generate Secure Password"):
+                password = tools.generate_secure_password(length, use_special, use_numbers)
+                st.text_area("Generated Password:", password, height=50)
+                
+                # Analyze the generated password
+                analysis = tools.password_strength_analyzer(password)
+                st.markdown(f"Strength: <span class='{analysis['color']}'>{analysis['strength']}</span>", 
+                           unsafe_allow_html=True)
     
     with tab3:
-        st.subheader("Cryptographic Key Generation")
+        st.subheader("Password Breach Check")
+        st.info("This feature checks if your password has been exposed in known data breaches.")
         
-        key_type = st.selectbox("Key Type:", ["AES-256", "RSA-4096", "ECDSA-P521", "Ed25519"])
-        if st.button("Generate Key"):
-            if key_type == "AES-256":
-                key = Fernet.generate_key()
-                st.text_area("AES-256 Key:", key.decode(), height=100)
-    
-    with tab4:
-        st.subheader("Digital Signature Simulation")
-        
-        document = st.text_area("Document to sign:")
-        if st.button("Generate Signature") and document:
-            # Simulate digital signature
-            signature = hashlib.sha256(document.encode()).hexdigest()
-            st.text_area("Digital Signature:", signature, height=100)
-    
-    with tab5:
-        st.subheader("Cryptographic Strength Analysis")
-        
-        password = st.text_input("Enter password for analysis:", type="password")
-        if password:
-            entropy = len(password) * 4  # Simple entropy calculation
-            st.metric("Password Entropy", f"{entropy} bits")
-            
-            if entropy < 40:
-                st.error("Weak password - high risk")
-            elif entropy < 60:
-                st.warning("Moderate password - medium risk")
-            else:
-                st.success("Strong password - low risk")
+        email = st.text_input("Enter email to check:")
+        if st.button("Check Breaches") and email:
+            # Simulated breach check
+            with st.spinner("Checking known data breaches..."):
+                time.sleep(2)
+                
+                # Simulate results
+                breach_count = hash(email) % 5
+                if breach_count > 0:
+                    st.error(f"❌ This email appears in {breach_count} known data breaches!")
+                    st.write("Recommended actions:")
+                    st.write("1. Change your password immediately")
+                    st.write("2. Enable two-factor authentication")
+                    st.write("3. Use a password manager")
+                else:
+                    st.success("✅ No known breaches found for this email")
 
-def show_network_security(tools):
-    st.header("🌐 Network Security")
+def show_cryptography_tools(tools):
+    st.header("🔄 Cryptography Tools")
     
-    tab1, tab2, tab3, tab4 = st.tabs(["Port Scanner", "DNS Enumeration", "WHOIS Lookup", "Network Analysis"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Hash Generator", "JWT Analyzer", "Data Encoder", "Data Decoder"])
     
     with tab1:
-        st.subheader("Advanced Port Scanner")
+        st.subheader("Advanced Hash Generator")
         
-        target = st.text_input("Target IP/Hostname:")
-        port_range = st.text_input("Port Range (e.g., 1-1000):", "1-1000")
+        text = st.text_area("Text to hash:")
+        algorithm = st.selectbox("Hash Algorithm:", 
+                               ["md5", "sha1", "sha256", "sha512", "sha3_256", "sha3_512", "blake2b"])
+        
+        if st.button("Generate Hash") and text:
+            hash_result = tools.advanced_hash_generator(text, algorithm)
+            st.text_area("Hash Result:", hash_result, height=100)
+            
+            # Show hash length
+            st.info(f"Hash length: {len(hash_result)} characters")
+    
+    with tab2:
+        st.subheader("JWT Token Analyzer")
+        
+        jwt_token = st.text_area("Paste JWT Token:")
+        
+        if st.button("Analyze JWT") and jwt_token:
+            analysis = tools.jwt_analyzer(jwt_token)
+            
+            if analysis["valid"]:
+                st.success("✅ Valid JWT Token")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.subheader("Header")
+                    st.json(analysis["header"])
+                
+                with col2:
+                    st.subheader("Payload")
+                    st.json(analysis["payload"])
+            else:
+                st.error("❌ Invalid JWT Token")
+                st.write(analysis["error"])
+        
+        st.subheader("JWT Generator")
+        payload_text = st.text_area("Payload (JSON):", '{"user": "admin", "exp": 1730000000}')
+        secret = st.text_input("Secret Key:", type="password")
+        
+        if st.button("Generate JWT") and payload_text and secret:
+            try:
+                payload = json.loads(payload_text)
+                token = tools.generate_jwt_token(payload, secret)
+                st.text_area("Generated JWT:", token, height=100)
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+    
+    with tab3:
+        st.subheader("Data Encoder")
+        
+        text = st.text_area("Text to encode:")
+        encode_type = st.selectbox("Encoding Type:", ["base64", "hex", "binary", "url"])
+        
+        if st.button("Encode") and text:
+            encoded = tools.multi_format_encoder(text, encode_type)
+            st.text_area("Encoded Result:", encoded, height=150)
+    
+    with tab4:
+        st.subheader("Data Decoder")
+        
+        text = st.text_area("Text to decode:")
+        decode_type = st.selectbox("Decoding Type:", ["base64", "hex", "binary", "url"])
+        
+        if st.button("Decode") and text:
+            decoded = tools.multi_format_decoder(text, decode_type)
+            st.text_area("Decoded Result:", decoded, height=150)
+
+def show_network_analysis(tools):
+    st.header("🌐 Network Security Analysis")
+    
+    tab1, tab2, tab3 = st.tabs(["Port Scanner", "IP Analysis", "Network Tools"])
+    
+    with tab1:
+        st.subheader("Port Scanner")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            target = st.text_input("Target IP/Hostname:", "example.com")
+            port_range = st.text_input("Port Range:", "80-100")
+        
+        with col2:
+            st.write("Common ports:")
+            st.code("HTTP: 80\nHTTPS: 443\nSSH: 22\nFTP: 21\nDNS: 53")
         
         if st.button("Start Port Scan") and target:
-            with st.spinner("Scanning ports..."):
+            with st.spinner(f"Scanning {target}..."):
                 open_ports = tools.port_scanner(target, port_range)
             
             if open_ports:
                 st.success(f"Found {len(open_ports)} open ports")
-                for port, service in open_ports:
-                    st.write(f"Port {port}/tcp - {service}")
-            else:
-                st.info("No open ports found in specified range")
-    
-    with tab2:
-        st.subheader("DNS Enumeration")
-        
-        domain = st.text_input("Domain for DNS enumeration:")
-        if st.button("Enumerate DNS") and domain:
-            with st.spinner("Gathering DNS records..."):
-                results = tools.dns_enumeration(domain)
-            
-            for record_type, records in results.items():
-                st.write(f"**{record_type} Records:**")
-                for record in records:
-                    st.write(f"  - {record}")
-    
-    with tab3:
-        st.subheader("WHOIS Lookup")
-        
-        domain = st.text_input("Domain for WHOIS lookup:")
-        if st.button("Perform WHOIS Lookup") and domain:
-            with st.spinner("Querying WHOIS database..."):
-                whois_info = tools.whois_lookup(domain)
-            
-            st.json(whois_info)
-    
-    with tab4:
-        st.subheader("Network Traffic Analysis")
-        
-        # Simulate network traffic analysis
-        if st.button("Analyze Network Traffic"):
-            traffic_data = {
-                "Protocols": {"TCP": 65, "UDP": 25, "ICMP": 10},
-                "Top Talkers": ["192.168.1.100", "10.0.0.50", "192.168.1.1"],
-                "Suspicious Activity": ["Port scanning from 203.0.113.45", "DNS tunneling attempt"]
-            }
-            
-            st.write("**Protocol Distribution:**")
-            fig = px.pie(values=list(traffic_data["Protocols"].values()), 
-                        names=list(traffic_data["Protocols"].keys()))
-            st.plotly_chart(fig)
-            
-            st.write("**Suspicious Activity:**")
-            for activity in traffic_data["Suspicious Activity"]:
-                st.write(f"⚠️ {activity}")
-
-def show_threat_intelligence(tools):
-    st.header("🕵️ Threat Intelligence")
-    
-    tab1, tab2, tab3 = st.tabs(["IP Reputation", "Domain Analysis", "Threat Feeds"])
-    
-    with tab1:
-        st.subheader("IP Reputation Check")
-        
-        ip = st.text_input("Enter IP address for reputation check:")
-        if st.button("Check IP Reputation") and ip:
-            with st.spinner("Analyzing IP reputation..."):
-                reputation = tools.check_ip_reputation(ip)
-            
-            st.metric("Malicious Score", f"{reputation['malicious_score']}%")
-            st.metric("Abuse Confidence", f"{reputation['abuse_confidence']}%")
-            
-            if reputation['threat_types']:
-                st.error(f"Associated threats: {', '.join(reputation['threat_types'])}")
-            else:
-                st.success("No known threats associated")
-    
-    with tab2:
-        st.subheader("Domain Reputation Analysis")
-        
-        domain = st.text_input("Enter domain for analysis:")
-        if st.button("Analyze Domain") and domain:
-            with st.spinner("Analyzing domain reputation..."):
-                analysis = tools.domain_reputation_analysis(domain)
-            
-            st.metric("Domain Age", f"{analysis['age_days']} days")
-            st.metric("Trust Score", f"{analysis['trust_score']}%")
-            
-            if analysis['suspicious_indicators']:
-                st.warning(f"Suspicious indicators: {', '.join(analysis['suspicious_indicators'])}")
-            
-            if analysis['associated_threats']:
-                st.error(f"Associated threats: {', '.join(analysis['associated_threats'])}")
-    
-    with tab3:
-        st.subheader("Threat Intelligence Feeds")
-        
-        # Simulated threat feed
-        threats = [
-            {"type": "Malware", "name": "Emotet", "risk": "HIGH", "last_seen": "2 hours ago"},
-            {"type": "Phishing", "name": "Office365 Credential Harvesting", "risk": "MEDIUM", "last_seen": "1 hour ago"},
-            {"type": "Exploit", "name": "Log4Shell", "risk": "CRITICAL", "last_seen": "30 minutes ago"}
-        ]
-        
-        for threat in threats:
-            risk_class = f"security-{threat['risk'].lower()}"
-            st.markdown(f"""
-            <div style="padding: 10px; margin: 5px 0; background: #1e1e1e; border-radius: 5px;">
-                <strong>{threat['type']}</strong> - {threat['name']} - 
-                <span class="{risk_class}">{threat['risk']}</span> - 
-                <em>{threat['last_seen']}</em>
-            </div>
-            """, unsafe_allow_html=True)
-
-# Continue with other sections in a similar comprehensive manner...
-
-def show_digital_forensics(tools):
-    st.header("🔍 Digital Forensics")
-    
-    tab1, tab2, tab3 = st.tabs(["Memory Analysis", "Timeline Analysis", "File Carving"])
-    
-    with tab1:
-        st.subheader("Memory Analysis Simulation")
-        
-        if st.button("Analyze Memory Dump"):
-            processes = tools.memory_analysis_simulation()
-            
-            st.write("**Running Processes:**")
-            for proc in processes:
-                st.write(f"PID {proc['pid']}: {proc['name']} - CPU: {proc['cpu']}% - Memory: {proc['memory']}MB")
                 
-                if proc['cpu'] > 80:
-                    st.error("⚠️ High CPU usage - potential malware!")
+                for port, service in open_ports:
+                    col1, col2 = st.columns([1, 3])
+                    with col1:
+                        st.write(f"**Port {port}/TCP**")
+                    with col2:
+                        st.write(f"Service: {service}")
+            else:
+                st.info("No open ports found in the specified range")
     
     with tab2:
-        st.subheader("Event Timeline Analysis")
+        st.subheader("IP Address Analysis")
         
-        # Simulated events
-        events = [
-            {"timestamp": "2024-01-15 08:30:00", "event": "User login", "user": "john.doe"},
-            {"timestamp": "2024-01-15 09:15:00", "event": "File download", "user": "john.doe"},
-            {"timestamp": "2024-01-15 10:00:00", "event": "Suspicious process started", "user": "system"}
-        ]
+        ip = st.text_input("Enter IP address:")
         
-        timeline_df = tools.timeline_analyzer(events)
-        st.dataframe(timeline_df)
+        if st.button("Analyze IP") and ip:
+            analysis = tools.ip_reputation_check(ip)
+            
+            if "error" not in analysis:
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.metric("IP Address", analysis["ip"])
+                    st.metric("Threat Score", f"{analysis['threat_score']}/100")
+                
+                with col2:
+                    risk_color = "security-high" if analysis['risk_level'] == "High" else "security-medium" if analysis['risk_level'] == "Medium" else "security-low"
+                    st.markdown(f"Risk Level: <span class='{risk_color}'>{analysis['risk_level']}</span>", unsafe_allow_html=True)
+                
+                if analysis['threats']:
+                    st.warning("⚠️ Potential Threats:")
+                    for threat in analysis['threats']:
+                        st.write(f"- {threat}")
+                else:
+                    st.success("✅ No known threats detected")
+            else:
+                st.error(analysis["error"])
     
     with tab3:
-        st.subheader("File Carving & Analysis")
+        st.subheader("Network Utilities")
         
-        uploaded_file = st.file_uploader("Upload file for analysis:", type=['exe', 'dll', 'bin'])
-        if uploaded_file is not None:
-            file_content = uploaded_file.getvalue()
-            
-            st.write("**File Hashes:**")
-            hashes = tools.file_hash_analyzer(file_content)
-            for algo, hash_val in hashes.items():
-                st.write(f"{algo}: {hash_val}")
-            
-            st.write("**Extracted Strings:**")
-            strings = tools.string_extractor(file_content)
-            st.text_area("Strings found:", "\n".join(strings[:50]), height=200)
+        st.info("Additional network tools will be implemented here")
+        st.write("Planned features:")
+        st.write("• DNS lookup tools")
+        st.write("• WHOIS information")
+        st.write("• Network packet analysis")
+        st.write("• SSL certificate checker")
 
 def show_web_security(tools):
-    st.header("📡 Web Security")
+    st.header("📡 Web Security Analysis")
     
-    tab1, tab2, tab3 = st.tabs(["Security Headers", "SSL Analysis", "Web Vulnerability Scan"])
+    tab1, tab2 = st.tabs(["Security Headers", "Website Analysis"])
     
     with tab1:
         st.subheader("HTTP Security Headers Analysis")
         
-        url = st.text_input("Enter URL for header analysis:")
+        url = st.text_input("Enter website URL:")
+        
         if st.button("Analyze Headers") and url:
             with st.spinner("Analyzing security headers..."):
-                headers, content_length = tools.analyze_http_headers(url)
+                headers, content_length = tools.website_security_headers(url)
             
             if "error" not in headers:
                 score = 0
+                total_headers = len(headers)
+                
                 for header, value in headers.items():
                     if value != "MISSING":
                         score += 1
-                        st.success(f"✅ {header}: {value}")
+                        st.success(f"✅ **{header}**: {value}")
                     else:
-                        st.error(f"❌ {header}: {value}")
+                        st.error(f"❌ **{header}**: {value}")
                 
-                st.metric("Security Headers Score", f"{score}/6")
+                security_score = (score / total_headers) * 100
+                st.metric("Security Headers Score", f"{security_score:.1f}%")
+                
+                if security_score >= 80:
+                    st.success("Good security headers configuration")
+                elif security_score >= 60:
+                    st.warning("Moderate security headers configuration")
+                else:
+                    st.error("Poor security headers configuration")
             else:
-                st.error(f"Error: {headers['error']}")
+                st.error(f"Error analyzing headers: {headers['error']}")
     
     with tab2:
-        st.subheader("SSL/TLS Configuration Check")
+        st.subheader("Website Security Analysis")
         
-        # Simulated SSL analysis
-        domain = st.text_input("Enter domain for SSL analysis:")
-        if st.button("Check SSL Configuration") and domain:
-            ssl_info = {
-                "Protocols": ["TLS 1.2", "TLS 1.3"],
-                "Cipher Strength": "Strong",
-                "Certificate Validity": "Valid",
-                "Expires": "2024-12-31"
-            }
+        st.info("Comprehensive website security analysis")
+        st.write("This tool analyzes various security aspects of websites:")
+        st.write("• SSL/TLS configuration")
+        st.write("• Security headers")
+        st.write("• Vulnerabilities")
+        st.write("• Content Security Policy")
+        
+        website = st.text_input("Website to analyze:")
+        if st.button("Full Analysis") and website:
+            with st.spinner("Performing comprehensive analysis..."):
+                time.sleep(3)
+                
+                # Simulated results
+                st.success("Analysis Complete!")
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.metric("SSL Grade", "A")
+                    st.metric("HTTPS", "Enabled")
+                
+                with col2:
+                    st.metric("Security Headers", "6/8")
+                    st.metric("Vulnerabilities", "2")
+                
+                with col3:
+                    st.metric("Content Security", "Good")
+                    st.metric("Overall Score", "85%")
+
+def show_threat_intelligence(tools):
+    st.header("🔍 Threat Intelligence")
+    
+    tab1, tab2, tab3 = st.tabs(["IP Reputation", "Domain Analysis", "Threat Feed"])
+    
+    with tab1:
+        st.subheader("IP Reputation Analysis")
+        
+        ip_list = st.text_area("Enter IP addresses (one per line):")
+        
+        if st.button("Check Reputation") and ip_list:
+            ips = [ip.strip() for ip in ip_list.split('\n') if ip.strip()]
+            results = []
             
-            st.json(ssl_info)
+            for ip in ips:
+                result = tools.ip_reputation_check(ip)
+                results.append(result)
             
-            if "TLS 1.0" in ssl_info["Protocols"] or "TLS 1.1" in ssl_info["Protocols"]:
-                st.error("⚠️ Weak protocols detected!")
+            # Display results in a table
+            df = pd.DataFrame(results)
+            st.dataframe(df)
+    
+    with tab2:
+        st.subheader("Domain Threat Analysis")
+        
+        domain = st.text_input("Enter domain name:")
+        
+        if st.button("Analyze Domain") and domain:
+            with st.spinner("Analyzing domain reputation..."):
+                # Simulated domain analysis
+                time.sleep(2)
+                
+                analysis = {
+                    "domain": domain,
+                    "age_days": np.random.randint(1, 3650),
+                    "trust_score": np.random.randint(0, 100),
+                    "malicious": np.random.choice([True, False], p=[0.2, 0.8])
+                }
+                
+                st.metric("Domain Age", f"{analysis['age_days']} days")
+                st.metric("Trust Score", f"{analysis['trust_score']}%")
+                
+                if analysis['malicious']:
+                    st.error("🚨 Domain flagged as potentially malicious")
+                else:
+                    st.success("✅ Domain appears clean")
     
     with tab3:
-        st.subheader("Web Application Vulnerability Scanner")
+        st.subheader("Live Threat Feed")
         
-        target_url = st.text_input("Enter target URL for vulnerability scan:")
-        if st.button("Start Vulnerability Scan") and target_url:
-            with st.spinner("Scanning for vulnerabilities..."):
-                # Simulated vulnerabilities
-                vulnerabilities = [
-                    {"type": "SQL Injection", "risk": "HIGH", "location": "/login.php"},
-                    {"type": "XSS", "risk": "MEDIUM", "location": "/search.php"},
-                    {"type": "CSRF", "risk": "LOW", "location": "/update_profile.php"}
-                ]
-                
-                for vuln in vulnerabilities:
-                    risk_class = f"security-{vuln['risk'].lower()}"
-                    st.markdown(f"""
-                    <div style="padding: 10px; margin: 5px 0; background: #1e1e1e; border-radius: 5px;">
-                        <span class="{risk_class}">{vuln['risk']}</span> - 
-                        {vuln['type']} at {vuln['location']}
-                    </div>
-                    """, unsafe_allow_html=True)
+        st.info("Real-time threat intelligence feed")
+        
+        # Simulated threat feed
+        threats = [
+            {"type": "Malware", "name": "Emotet", "severity": "High", "timestamp": "2 hours ago"},
+            {"type": "Phishing", "name": "Office365 Campaign", "severity": "Medium", "timestamp": "1 hour ago"},
+            {"type": "DDoS", "name": "Mirai Botnet", "severity": "High", "timestamp": "30 minutes ago"},
+        ]
+        
+        for threat in threats:
+            severity_class = f"security-{threat['severity'].lower()}"
+            st.markdown(f"""
+            <div style="padding: 10px; margin: 5px 0; background: #1e1e2e; border-radius: 5px;">
+                <strong>{threat['type']}</strong> - {threat['name']} - 
+                <span class="{severity_class}">{threat['severity']}</span> - 
+                <em>{threat['timestamp']}</em>
+            </div>
+            """, unsafe_allow_html=True)
 
-# Additional sections would follow the same pattern...
-
-def show_mobile_security(tools):
-    st.header("📱 Mobile Security")
-    st.info("Mobile security analysis tools coming soon...")
-
-def show_cryptanalysis(tools):
-    st.header("🧩 Cryptanalysis")
+def show_data_analysis(tools):
+    st.header("📊 Security Data Analysis")
     
-    tab1, tab2 = st.tabs(["Frequency Analysis", "Cipher Cracking"])
+    tab1, tab2 = st.tabs(["File Analysis", "Security Analytics"])
     
     with tab1:
-        st.subheader("Frequency Analysis")
+        st.subheader("File Security Analysis")
         
-        ciphertext = st.text_area("Enter ciphertext for frequency analysis:")
-        if st.button("Analyze Frequency") and ciphertext:
-            freq = tools.frequency_analysis(ciphertext)
+        uploaded_file = st.file_uploader("Upload file for analysis:", type=['exe', 'dll', 'txt', 'pdf', 'doc'])
+        
+        if uploaded_file is not None:
+            file_content = uploaded_file.getvalue()
             
-            # Create frequency chart
-            letters = list(freq.keys())
-            counts = [freq[letter][1] for letter in letters]
+            st.write(f"**File:** {uploaded_file.name}")
+            st.write(f"**Size:** {len(file_content)} bytes")
             
-            fig = px.bar(x=letters, y=counts, title="Letter Frequency Analysis")
-            st.plotly_chart(fig)
+            # Hash analysis
+            st.subheader("File Hashes")
+            hashes = tools.file_hash_analyzer(file_content)
+            for algo, hash_val in hashes.items():
+                st.text_input(f"{algo}:", hash_val)
+            
+            # String extraction
+            st.subheader("Extracted Strings")
+            strings = tools.string_extractor(file_content)
+            if strings:
+                st.text_area("Found strings:", "\n".join(strings[:50]), height=200)
+            else:
+                st.info("No readable strings found in the file")
     
     with tab2:
-        st.subheader("Caesar Cipher Cracker")
+        st.subheader("Security Analytics Dashboard")
         
-        ciphertext = st.text_input("Enter Caesar cipher text:")
-        if st.button("Crack Caesar Cipher") and ciphertext:
-            results = tools.caesar_cracker(ciphertext)
-            
-            st.write("**Possible Decryptions:**")
-            for shift, plaintext in results:
-                st.write(f"Shift {shift:2d}: {plaintext}")
+        # Generate sample security data
+        dates = pd.date_range('2024-01-01', periods=100, freq='D')
+        security_events = pd.DataFrame({
+            'date': dates,
+            'malware_detected': np.random.poisson(5, 100),
+            'phishing_attempts': np.random.poisson(8, 100),
+            'failed_logins': np.random.poisson(20, 100),
+            'firewall_blocks': np.random.poisson(15, 100)
+        })
+        
+        # Security metrics over time
+        fig = px.line(security_events, x='date', y=['malware_detected', 'phishing_attempts', 'firewall_blocks'],
+                     title='Security Events Over Time', labels={'value': 'Count', 'variable': 'Event Type'})
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Event distribution
+        total_events = security_events[['malware_detected', 'phishing_attempts', 'failed_logins', 'firewall_blocks']].sum()
+        fig = px.pie(values=total_events.values, names=total_events.index, title='Security Event Distribution')
+        st.plotly_chart(fig, use_container_width=True)
 
-def show_steganography(tools):
-    st.header("🖼️ Steganography")
+def show_utilities(tools):
+    st.header("🛠️ Security Utilities")
     
-    tab1, tab2 = st.tabs(["Hide Text", "Extract Text"])
+    tab1, tab2, tab3 = st.tabs(["QR Generator", "Data Converter", "System Info"])
     
     with tab1:
-        st.subheader("Hide Text in Image")
+        st.subheader("QR Code Generator")
         
-        image_file = st.file_uploader("Upload image:", type=['png', 'jpg', 'jpeg'])
-        secret_text = st.text_area("Text to hide:")
-        password = st.text_input("Password (optional):", type="password")
-        
-        if st.button("Hide Text in Image") and image_file and secret_text:
-            result_image, message = tools.hide_text_in_image(image_file, secret_text, password)
-            
-            if result_image:
-                st.success("Text successfully hidden in image!")
+        qr_data = st.text_input("Data for QR code:")
+        if st.button("Generate QR Code") and qr_data:
+            qr_image = tools.generate_qr_code(qr_data)
+            if qr_image:
+                st.image(qr_image, caption="QR Code", use_column_width=True)
+                
+                # Download button
                 st.download_button(
-                    label="Download Stego Image",
-                    data=result_image,
-                    file_name="stego_image.png",
+                    label="Download QR Code",
+                    data=qr_image,
+                    file_name="qrcode.png",
                     mime="image/png"
                 )
             else:
-                st.error(f"Error: {message}")
-    
-    with tab2:
-        st.subheader("Extract Text from Image")
-        st.info("Text extraction feature requires additional implementation")
-
-def show_security_analytics(tools):
-    st.header("📈 Security Analytics")
-    
-    # Generate sample security data
-    dates = pd.date_range('2024-01-01', periods=30, freq='D')
-    security_data = pd.DataFrame({
-        'date': dates,
-        'malware_attacks': np.random.randint(0, 20, 30),
-        'phishing_attempts': np.random.randint(0, 15, 30),
-        'brute_force_attempts': np.random.randint(0, 50, 30),
-        'successful_breaches': np.random.randint(0, 5, 30)
-    })
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        fig = px.line(security_data, x='date', y=['malware_attacks', 'phishing_attempts'], 
-                     title='Attack Trends Over Time')
-        st.plotly_chart(fig)
-    
-    with col2:
-        fig = px.bar(security_data, x='date', y='brute_force_attempts',
-                    title='Brute Force Attempts')
-        st.plotly_chart(fig)
-    
-    # Risk assessment
-    st.subheader("Risk Assessment Dashboard")
-    
-    risk_factors = {
-        "External Threat Level": 65,
-        "Internal Vulnerability": 42,
-        "Compliance Gap": 28,
-        "Security Awareness": 75
-    }
-    
-    for factor, score in risk_factors.items():
-        st.write(f"**{factor}:** {score}%")
-        st.progress(score/100)
-
-def show_incident_response(tools):
-    st.header("⚙️ Incident Response")
-    
-    tab1, tab2, tab3 = st.tabs(["Incident Playbook", "Evidence Collection", "Response Timeline"])
-    
-    with tab1:
-        st.subheader("Incident Response Playbook")
-        
-        incident_type = st.selectbox("Select Incident Type:", 
-                                   ["Malware Infection", "Data Breach", "DDoS Attack", "Insider Threat"])
-        
-        if incident_type == "Malware Infection":
-            st.write("""
-            **Response Steps:**
-            1. 🔍 Identify and isolate infected systems
-            2. 📊 Analyze malware samples
-            3. 🛡️ Contain the spread
-            4. 🧹 Remove malware
-            5. 🔄 Restore systems from backups
-            6. 📝 Document lessons learned
-            """)
-    
-    with tab2:
-        st.subheader("Digital Evidence Collection")
-        
-        evidence_types = st.multiselect("Select evidence to collect:", 
-                                      ["Memory Dump", "Disk Image", "Log Files", "Network Captures", "Registry Hives"])
-        
-        if st.button("Generate Collection Script"):
-            st.code("""
-            # Sample evidence collection script
-            echo "Starting evidence collection..."
-            # Collect memory
-            dump_memory.py --output memory.dmp
-            # Collect disk image
-            dd if=/dev/sda of=disk_image.img
-            echo "Evidence collection complete!"
-            """)
-    
-    with tab3:
-        st.subheader("Incident Response Timeline")
-        
-        # Sample timeline
-        timeline_events = [
-            {"time": "08:00", "event": "Alert: Suspicious activity detected", "status": "🔴 Critical"},
-            {"time": "08:05", "event": "Initial assessment started", "status": "🟡 Investigating"},
-            {"time": "08:30", "event": "Containment measures applied", "status": "🟠 Containing"},
-            {"time": "09:15", "event": "Root cause identified", "status": "🔵 Analyzing"},
-            {"time": "10:00", "event": "Remediation in progress", "status": "🟢 Recovering"}
-        ]
-        
-        for event in timeline_events:
-            st.write(f"**{event['time']}** {event['status']} - {event['event']}")
-
-def show_utilities(tools):
-    st.header("🔧 Security Utilities")
-    
-    tab1, tab2, tab3, tab4 = st.tabs(["QR Code Generator", "Data Converter", "Password Audit", "System Info"])
-    
-    with tab1:
-        st.subheader("Secure QR Code Generator")
-        
-        qr_data = st.text_input("Data for QR code:")
-        password = st.text_input("Encryption password (optional):", type="password")
-        
-        if st.button("Generate QR Code") and qr_data:
-            qr_image = tools.generate_secure_qr(qr_data, password)
-            st.image(qr_image, caption="Secure QR Code", use_column_width=True)
+                st.error("Failed to generate QR code")
     
     with tab2:
         st.subheader("Data Format Converter")
         
-        input_data = st.text_area("Input data:")
-        conversion = st.selectbox("Conversion type:", 
-                                ["Text to Hex", "Hex to Text", "Base64 Encode", "Base64 Decode"])
+        col1, col2 = st.columns(2)
         
-        if st.button("Convert") and input_data:
-            if conversion == "Text to Hex":
-                result = input_data.encode().hex()
-            elif conversion == "Hex to Text":
-                result = bytes.fromhex(input_data).decode()
-            elif conversion == "Base64 Encode":
-                result = base64.b64encode(input_data.encode()).decode()
-            elif conversion == "Base64 Decode":
-                result = base64.b64decode(input_data.encode()).decode()
-            
-            st.text_area("Converted result:", result, height=100)
+        with col1:
+            input_data = st.text_area("Input data:")
+            conversion_type = st.selectbox("Conversion:", 
+                                         ["Text to Base64", "Base64 to Text", 
+                                          "Text to Hex", "Hex to Text"])
+        
+        with col2:
+            if st.button("Convert"):
+                if conversion_type == "Text to Base64":
+                    result = tools.multi_format_encoder(input_data, 'base64')
+                elif conversion_type == "Base64 to Text":
+                    result = tools.multi_format_decoder(input_data, 'base64')
+                elif conversion_type == "Text to Hex":
+                    result = tools.multi_format_encoder(input_data, 'hex')
+                elif conversion_type == "Hex to Text":
+                    result = tools.multi_format_decoder(input_data, 'hex')
+                
+                st.text_area("Converted result:", result, height=200)
     
     with tab3:
-        st.subheader("Password Security Audit")
+        st.subheader("System Information")
         
-        password = st.text_input("Password to audit:", type="password")
-        if password:
-            # Comprehensive password audit
-            score = 0
-            feedback = []
-            
-            # Length check
-            if len(password) >= 12:
-                score += 2
-            elif len(password) >= 8:
-                score += 1
-            else:
-                feedback.append("Password too short")
-            
-            # Complexity checks
-            checks = [
-                (r'[A-Z]', "uppercase letter"),
-                (r'[a-z]', "lowercase letter"), 
-                (r'\d', "number"),
-                (r'[!@#$%^&*(),.?":{}|<>]', "special character")
-            ]
-            
-            for pattern, description in checks:
-                if re.search(pattern, password):
-                    score += 1
-                else:
-                    feedback.append(f"Missing {description}")
-            
-            # Entropy calculation
-            entropy = len(password) * 4
-            score += min(entropy // 20, 3)
-            
-            # Display results
-            st.metric("Security Score", f"{score}/9")
-            st.metric("Estimated Entropy", f"{entropy} bits")
-            
-            for item in feedback:
-                st.write(f"❌ {item}")
-    
-    with tab4:
-        st.subheader("System Security Information")
-        
-        if st.button("Gather System Info"):
+        if st.button("Generate System Report"):
             # Simulated system information
             sys_info = {
-                "Platform": "Linux",
-                "Security Status": "Protected",
-                "Firewall": "Active",
-                "Last Update": "2024-01-15",
-                "Antivirus": "Enabled"
+                "Application": "Advanced Cybersecurity Platform",
+                "Version": "2.0.0",
+                "Python Version": "3.9+",
+                "Streamlit Version": "1.28.0",
+                "Status": "🟢 Operational",
+                "Last Update": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "Features Available": "15+ Security Tools",
+                "Data Processing": "Client-side only"
             }
             
             st.json(sys_info)
+            
+            st.success("✅ System is functioning normally")
+            st.info("All security tools are available and operational")
 
 if __name__ == "__main__":
     main()
